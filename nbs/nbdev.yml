@@ -1,0 +1,9 @@
+project:
+  output-dir: _docs
+
+website:
+  title: "portfolio"
+  site-url: "https://northarray.github.io/portfolio"
+  description: ""
+  repo-branch: main
+  repo-url: "https://github.com/northarray/portfolio"
