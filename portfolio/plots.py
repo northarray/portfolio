@@ -14,12 +14,12 @@ from typing import Any
 import pandas as pd
 
 # %% ../nbs/plots.ipynb #0968b640
-from IPython.utils.capture import capture_output
-with capture_output():
-    import holoviews as hv
-    import hvplot.pandas  # noqa: F401 - registers the pandas .hvplot accessor
-    from bokeh.models import ColumnDataSource, CustomAction, CustomJS
-    from bokeh.models.formatters import NumeralTickFormatter
+import holoviews as hv
+from bokeh.models import ColumnDataSource, CustomAction, CustomJS
+from bokeh.models.formatters import NumeralTickFormatter
+
+# %% ../nbs/plots.ipynb #2df0e1e0
+import hvplot.pandas
 
 # %% ../nbs/plots.ipynb #90d7a5af
 DATE_COL = "date"

@@ -172,15 +172,16 @@ def correlation(self:Portfolio):
 
 # %% ../nbs/portfolio.ipynb #5c496be2
 @patch
-def return_drivers(self:Portfolio):
-    "Calculates portfolio and asset rolling 1 year tot.returns"
-    return self.asset_rets.join(self.port_rets).rolling(12).agg(sum)
+def return_drivers(self:Portfolio, months=12*5):
+    "Calculates portfolio and asset rolling return mean centered"
+    return self.asset_rets.join(self.port_rets).rolling(months).agg(sum).dropna()
 
 # %% ../nbs/portfolio.ipynb #9caadac6
 @patch
-def drawdown_series(self:Portfolio):
+def drawdown_series(self:Portfolio, assets=False):
     "Time series of drawdowns from rolling peak"
     wealth = self.cum_return()
+    if assets: wealth = (1+self._port_rets(excess=False, agg=False)).cumprod().join(wealth)
     return wealth / wealth.cummax() - 1
 
 # %% ../nbs/portfolio.ipynb #381b825e
