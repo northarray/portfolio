@@ -85,7 +85,6 @@ def interactive_report(*portfolios):
     single = len(portfolios) == 1
     window_w = pn.widgets.Select(name='Rolling Window (Years)', options=list(range(1,30)), value=1)
     time_w = time_period_w()
-    portfolio_infos = portfolio_info_w(*portfolios)
 
     slice_ports = lambda sy, sm, ey, em: [p.between(f'{sm}/{sy}', f'{em}/{ey}') for p in portfolios]
     ports_rx = pn.bind(slice_ports, *time_w)
