@@ -5,13 +5,16 @@ __all__ = ['time_period_w', 'portfolio_info_w', 'interactive_report']
 
 # %% ../nbs/reports_interactive.ipynb #55768d0f
 import panel as pn
-
-# %% ../nbs/reports_interactive.ipynb #cecf84d7
 import pandas as pd
 
 # %% ../nbs/reports_interactive.ipynb #0b96680b
 from .plots import timeseries_plot
 from .portfolio import *
+
+# %% ../nbs/reports_interactive.ipynb #bf450105
+from IPython.utils.capture import capture_output
+with capture_output():
+    pn.extension('tabulator')
 
 # %% ../nbs/reports_interactive.ipynb #3bd0f84c
 def time_period_w():
@@ -22,9 +25,6 @@ def time_period_w():
     end_year_w = pn.widgets.Select(name='End Year', options=years, value=2025)
     end_month_w = pn.widgets.Select(name='End Month', options=months, value=1)
     return start_year_w, start_month_w, end_year_w, end_month_w
-
-# %% ../nbs/reports_interactive.ipynb #43baa570
-pn.extension('tabulator')
 
 # %% ../nbs/reports_interactive.ipynb #b1839ca7
 def _get_info(p):
@@ -47,8 +47,8 @@ def interactive_report(*portfolios):
 
     summary       = pn.bind(lambda ps: pn.panel(compare(*ps)), ports_rx)
     cum_ret_plot  = pn.bind(lambda ps: timeseries_plot(compare(*ps, metric='cum_excess_return')), ports_rx)
-    roll_ret_plot = pn.bind(lambda ps, w: timeseries_plot(compare(*ps, metric='roll_return', months=w*12), hline=0), ports_rx, window_w)
-    real_w_plot   = pn.bind(lambda ps: timeseries_plot(compare(*ps, metric='real_w'), logy=True, is_perc=False), ports_rx)
+    roll_ret_plot = pn.bind(lambda ps, w: timeseries_plot(compare(*ps, metric='roll_return', months=w*12), interactive_hlines=True), ports_rx, window_w)
+    real_w_plot   = pn.bind(lambda ps: timeseries_plot(compare(*ps, metric='real_w'), logy=True, is_perc=False, interactive_growth_lines=True,), ports_rx)
     drawdown_plot = pn.bind(lambda ps: timeseries_plot(compare(*ps, metric='drawdown_series')), ports_rx)
 
     overview = pn.Column(
