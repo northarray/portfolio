@@ -15,7 +15,17 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
 ]
-dependencies = []
+dependencies = [
+    "bokeh",
+    "fastcore",
+    "holoviews",
+    "hvplot",
+    "matplotlib",
+    "numpy",
+    "pandas",
+    "panel",
+    "scipy",
+]
 
 [project.urls]
 Repository = "https://github.com/northarray/portfolio"
