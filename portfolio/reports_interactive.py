@@ -68,10 +68,11 @@ def decade_w(p):
 # %% ../nbs/reports_interactive.ipynb #03c8ed84
 def decade_comparison_w(*portfolios):
     p = portfolios[0]
-    decades = list(p.r_by_decade().columns)
+    #decades = list(p.r_by_decade().columns)
+    decades = sorted(set().union(*[p.r_by_decade().columns for p in portfolios]))
     decade_w = pn.widgets.Select(name='Decade', options=decades, value=decades[0])
     def plot(decade):
-        df = pd.concat({p.name: p.r_by_decade()[decade] for p in portfolios}, axis=1)
+        df = pd.concat({p.name: p.r_by_decade()[decade] for p in portfolios if decade in p.r_by_decade().columns}, axis=1)
         return timeseries_plot(df, logy=True, is_perc=False, xlabel='Years Held', ylabel='Real Return (cumulative)', hline=1.0)
     return pn.Column(decade_w, pn.bind(plot, decade_w))
 
