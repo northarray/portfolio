@@ -2,11 +2,18 @@
 
 # %% auto #0
 __all__ = ['return_drivers_w', 'time_period_w', 'portfolio_info_w', 'decade_w', 'decade_comparison_w', 'lost_decade_comparison_w',
-           'portfolio_overview', 'interactive_report']
+           'portfolio_overview', 'strat_plot', 'real_return_plot', 'rolling_sharpe', 'rolling_sharpe_plot',
+           'strategy_comparison_w', 'interactive_report']
 
 # %% ../nbs/reports_interactive.ipynb #55768d0f
 import panel as pn
 import pandas as pd
+
+# %% ../nbs/reports_interactive.ipynb #49a55f31
+from collections import defaultdict
+
+# %% ../nbs/reports_interactive.ipynb #dc69c7ea
+import holoviews as hv
 
 # %% ../nbs/reports_interactive.ipynb #32057075
 from .plots import timeseries_plot
@@ -113,6 +120,91 @@ def portfolio_overview(p):
         ('Decade analysis', decade_analysis),
         )
 
+# %% ../nbs/reports_interactive.ipynb #a26277f6
+def _strat_key(p): return p.name.rsplit('_', 1)[0]
+
+# %% ../nbs/reports_interactive.ipynb #40061cb7
+def _group_by_strategy(ps):
+    strats = defaultdict(list)
+    for p in ps: strats[_strat_key(p)].append(p)
+    return strats
+
+# %% ../nbs/reports_interactive.ipynb #38e79acf
+def _all_decade_streams(*ps):
+    frames = []
+    for p in ps:
+        df = p.r_by_decade()
+        df.columns = [f"{p.name.rsplit('_',1)[1]}_{c}" for c in df.columns]
+        frames.append(df)
+    return pd.concat(frames, axis=1)
+
+# %% ../nbs/reports_interactive.ipynb #8fdaf765
+def strat_plot(k, v):
+    df = _all_decade_streams(*v)
+    med = df.median(axis=1).rename('median')
+    q25 = df.quantile(.25, axis=1).rename('q25')
+    q75 = df.quantile(.75, axis=1).rename('q75')
+    band = pd.concat([q25, q75], axis=1)
+    bg = df.hvplot(alpha=0.15, color='gray', line_width=1, legend=False, width=600, height=400, title=k, ylabel='cumulative real return', xlabel='Holding Period (years)')
+    shade = band.hvplot.area(x=band.index.name or 'index', y='q25', y2='q75', alpha=0.25, color='steelblue', legend=False)
+    mid = med.hvplot(line_width=3, color='crimson', label='median')
+    return (bg * shade * mid).opts(shared_axes=False)
+
+# %% ../nbs/reports_interactive.ipynb #c741d151
+def _strat_dist_plot(ps):
+    strats = _group_by_strategy(ps)
+    return pn.Tabs(*[(k, strat_plot(k, v)) for k,v in strats.items()])
+
+# %% ../nbs/reports_interactive.ipynb #d0daf57d
+def _real_return_overlay(strategy, ps, color):
+    df = pd.concat({p.name: p.lost_decade() for p in ps}, axis=1)
+    med = df.median(axis=1).rename(strategy)
+    q25 = df.quantile(.25, axis=1).rename('q25')
+    q75 = df.quantile(.75, axis=1).rename('q75')
+    shade = pd.concat([q25, q75], axis=1).hvplot.area(y='q25', y2='q75', alpha=0.12, color=color, legend=False)
+    return shade * med.hvplot(line_width=2.5, color=color, label=strategy)
+
+# %% ../nbs/reports_interactive.ipynb #591754cd
+def real_return_plot(ps):
+    strats = _group_by_strategy(ps)
+    colors = dict(zip(strats.keys(), hv.Cycle('Category10').values))
+    its = iter([_real_return_overlay(k,v,colors[k]) for k,v in strats.items()])
+    overlay = next(its)
+    for pl in its: overlay = overlay*pl
+    return (overlay * hv.HLine(0).opts(color='black', line_width=1.5, line_dash='dotted')).opts(title='Real forward 10y returns: median ± IQR', width=700, height=450, legend_position='bottom', ylabel='Real 10y Return (ann%)')
+
+# %% ../nbs/reports_interactive.ipynb #be438583
+def rolling_sharpe(p, window=36):
+    r = p.port_rets[::-1]
+    s = (r.rolling(window).mean() * 12 / (r.rolling(window).std() * 12**0.5))[::-1]
+    return s.dropna().rename(p.name)
+
+# %% ../nbs/reports_interactive.ipynb #99b5638f
+def _rolling_sharpe_by_strat(strategy, ps, color, window=36):
+    df = pd.concat([rolling_sharpe(p, window) for p in ps], axis=1, sort=True)
+    med = df.mean(axis=1).rename(strategy)
+    #q25, q75 = df.quantile(.25, axis=1).rename('q25'), df.quantile(.75, axis=1).rename('q75')
+    #shade = pd.concat([q25,q75], axis=1).hvplot.area(y='q25', y2='q75', alpha=0.12, color=color, legend=False)
+    return med.hvplot(line_width=2.5, color=color, label=strategy)
+
+# %% ../nbs/reports_interactive.ipynb #5acaee8f
+def rolling_sharpe_plot(ps):
+    strats = _group_by_strategy(ps)
+    colors = dict(zip(strats.keys(), hv.Cycle('Category10').values))
+    its = iter([_rolling_sharpe_by_strat(k,v,colors[k], window=120) for k,v in strats.items()])
+    overlay = next(its)
+    for pl in its: overlay = overlay*pl
+    return (overlay * hv.HLine(0).opts(color='black', line_width=1.5, line_dash='dotted')).opts(title='Rolling 10y Sharpe by strategy', width=700, height=450, legend_position='bottom', ylabel='Ann. Sharpe')
+
+# %% ../nbs/reports_interactive.ipynb #56c00c68
+def strategy_comparison_w(ps):
+    if len(ps)<=1: return None
+    return pn.Column(
+        pn.pane.Markdown('### Real Return Distribution by Strategy'), _strat_dist_plot(ps),
+        pn.pane.Markdown('### Real Forward 10y Returns by Strategy'), real_return_plot(ps),
+        pn.pane.Markdown('### Rolling Sharpe by Strategy'), rolling_sharpe_plot(ps),
+    )
+
 # %% ../nbs/reports_interactive.ipynb #be83aeab
 def interactive_report(*portfolios):
     single = len(portfolios) == 1
@@ -152,5 +244,5 @@ def interactive_report(*portfolios):
         pn.pane.Markdown('## Decade Comparison'), decade_comp,
         )
 
-
-    return pn.Tabs(('Portfolio Comparison', comparison_w), ('Portfolio Overview', portfolio_overview_w))
+    strat_comp = pn.bind(lambda ps: strategy_comparison_w(ps), ports_rx)
+    return pn.Tabs(('Portfolio Comparison', comparison_w), ('Portfolio Overview', portfolio_overview_w), ('Strategy Comparison', strat_comp))
