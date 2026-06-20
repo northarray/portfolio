@@ -11,6 +11,7 @@ import pandas as pd
 
 # %% ../nbs/reports_interactive.ipynb #49a55f31
 from collections import defaultdict
+import datetime as dt
 
 # %% ../nbs/reports_interactive.ipynb #dc69c7ea
 import holoviews as hv
@@ -36,13 +37,9 @@ def return_drivers_w(p):
 
 # %% ../nbs/reports_interactive.ipynb #3bd0f84c
 def time_period_w():
-    years = list(range(1900, 2026))
-    months = list(range(1, 13))
-    start_year_w = pn.widgets.Select(name='Start Year', options=years, value=1982)
-    start_month_w = pn.widgets.Select(name='Start Month', options=months, value=1)
-    end_year_w = pn.widgets.Select(name='End Year', options=years, value=2025)
-    end_month_w = pn.widgets.Select(name='End Month', options=months, value=1)
-    return start_year_w, start_month_w, end_year_w, end_month_w
+    drp = pn.widgets.DateRangePicker(name='Date Range', value=(dt.date(1982,1,1), dt.date(2025,1,1)))
+    btn = pn.widgets.Button(name='Apply', button_type='primary')
+    return drp, btn
 
 # %% ../nbs/reports_interactive.ipynb #b1839ca7
 def _get_info(p):
@@ -205,33 +202,82 @@ def strategy_comparison_w(ps):
         pn.pane.Markdown('### Rolling Sharpe by Strategy'), rolling_sharpe_plot(ps),
     )
 
+# %% ../nbs/reports_interactive.ipynb #5068d9e7
+def _country_key(p): return p.name.rsplit('_', 1)[1] if '_' in p.name else p.name
+
+# %% ../nbs/reports_interactive.ipynb #18bd0ef7
+def _hier_multiselect(portfolios):
+    cs = sorted(set(_country_key(p) for p in portfolios))
+    ss = sorted(set(_strat_key(p) for p in portfolios))
+    ns = [p.name for p in portfolios]
+    cw = pn.widgets.MultiSelect(name='Countries', options=cs, value=cs, size=min(len(cs), 6))
+    sw = pn.widgets.MultiSelect(name='Strategies', options=ss, value=ss, size=min(len(ss), 6))
+    pw = pn.widgets.MultiSelect(name='Portfolios', options=ns, value=ns, size=min(len(ns), 8))
+    def _upd_strats(e):
+        new = sorted(set(_strat_key(p) for p in portfolios if _country_key(p) in set(cw.value)))
+        sw.options, sw.value = new, new
+    def _upd_ports(e):
+        sc, ss2 = set(cw.value), set(sw.value)
+        new = [p.name for p in portfolios if _country_key(p) in sc and _strat_key(p) in ss2]
+        pw.options, pw.value = new, new
+    cw.param.watch(_upd_strats, 'value')
+    sw.param.watch(_upd_ports, 'value')
+    return cw, sw, pw
+
+# %% ../nbs/reports_interactive.ipynb #e9f6b49b
+def _hier_select(portfolios):
+    cs = sorted(set(_country_key(p) for p in portfolios))
+    cw = pn.widgets.Select(name='Country', options=cs)
+    init_ss = sorted(set(_strat_key(p) for p in portfolios if _country_key(p) == cs[0]))
+    sw = pn.widgets.Select(name='Strategy', options=init_ss)
+    init_ps = [p.name for p in portfolios if _country_key(p) == cs[0] and _strat_key(p) == init_ss[0]]
+    pw = pn.widgets.Select(name='Portfolio', options=init_ps)
+    def _upd_strats(e):
+        new = sorted(set(_strat_key(p) for p in portfolios if _country_key(p) == cw.value))
+        sw.options, sw.value = new, new[0]
+    def _upd_ports(e):
+        new = [p.name for p in portfolios if _country_key(p) == cw.value and _strat_key(p) == sw.value]
+        pw.options, pw.value = new, new[0]
+    cw.param.watch(_upd_strats, 'value')
+    sw.param.watch(_upd_ports, 'value')
+    return cw, sw, pw
+
+# %% ../nbs/reports_interactive.ipynb #f901c172
+def _ports_rx(portfolios, tw, pw=None):
+    def _f(clicks):
+        start, end = tw[0].value
+        sel = set(pw.value) if pw else {p.name for p in portfolios}
+        return [p.between(start, end) for p in portfolios if p.name in sel]
+    return pn.bind(_f, tw[1].param.clicks)
+
+# %% ../nbs/reports_interactive.ipynb #76233aee
+def _single_port_rx(portfolios, tw, name_w):
+    def _f(clicks):
+        start, end = tw[0].value
+        return next(p for p in portfolios if p.name == name_w.value).between(start, end)
+    return pn.bind(_f, tw[1].param.clicks)
+
 # %% ../nbs/reports_interactive.ipynb #be83aeab
 def interactive_report(*portfolios):
-    single = len(portfolios) == 1
+    cmp_tw, ov_tw, sc_tw = time_period_w(), time_period_w(), time_period_w()
+    cmp_hier = _hier_multiselect(portfolios)
+    ov_hier  = _hier_select(portfolios)
+    cmp_rx     = _ports_rx(portfolios, cmp_tw, cmp_hier[2])
+    selected_p = _single_port_rx(portfolios, ov_tw, ov_hier[2])
+    sc_rx      = _ports_rx(portfolios, sc_tw)
     window_w = pn.widgets.Select(name='Rolling Window (Years)', options=list(range(1,30)), value=1)
-    time_w = time_period_w()
 
-    slice_ports = lambda sy, sm, ey, em: [p.between(f'{sm}/{sy}', f'{em}/{ey}') for p in portfolios]
-    ports_rx = pn.bind(slice_ports, *time_w)
+    summary       = pn.bind(lambda ps: pn.panel(compare(*ps)), cmp_rx)
+    cum_ret_plot  = pn.bind(lambda ps: timeseries_plot(compare(*ps, metric='cum_excess_return')), cmp_rx)
+    roll_ret_plot = pn.bind(lambda ps, w: timeseries_plot(compare(*ps, metric='roll_return', months=w*12), interactive_hlines=True), cmp_rx, window_w)
+    real_w_plot   = pn.bind(lambda ps: timeseries_plot(compare(*ps, metric='real_w'), logy=True, is_perc=False, interactive_growth_lines=True), cmp_rx)
+    drawdown_plot = pn.bind(lambda ps: timeseries_plot(compare(*ps, metric='drawdown_series')), cmp_rx)
+    decade_comp   = pn.bind(lambda ps: decade_comparison_w(*ps), cmp_rx)
+    lost_dec_comp = pn.bind(lambda ps: lost_decade_comparison_w(*ps), cmp_rx)
 
-    summary       = pn.bind(lambda ps: pn.panel(compare(*ps)), ports_rx)
-    cum_ret_plot  = pn.bind(lambda ps: timeseries_plot(compare(*ps, metric='cum_excess_return')), ports_rx)
-    roll_ret_plot = pn.bind(lambda ps, w: timeseries_plot(compare(*ps, metric='roll_return', months=w*12), interactive_hlines=True), ports_rx, window_w)
-    real_w_plot   = pn.bind(lambda ps: timeseries_plot(compare(*ps, metric='real_w'), logy=True, is_perc=False, interactive_growth_lines=True,), ports_rx)
-    drawdown_plot = pn.bind(lambda ps: timeseries_plot(compare(*ps, metric='drawdown_series')), ports_rx)
-
-    # decade comparison
-    decade_comp = pn.bind(lambda ps: decade_comparison_w(*ps), ports_rx)
-    lost_dec_comp = pn.bind(lambda ps: lost_decade_comparison_w(*ps), ports_rx)
-
-    name_w = pn.widgets.Select(name='Portfolio', options=[p.name for p in portfolios])
-    selected_p = pn.bind(lambda ps, name: next(p for p in ps if p.name == name), ports_rx, name_w)
-    portfolio_overview_w = pn.Column(
-        name_w,
-        portfolio_overview(selected_p)
-    )
     comparison_w = pn.Column(
-        pn.pane.Markdown('## Time Period'), pn.Row(*time_w),
+        pn.pane.Markdown('## Time Period & Selection'),
+        pn.Row(*cmp_tw), pn.Row(*cmp_hier),
         pn.pane.Markdown('## Portfolio Stats'),
         pn.pane.Markdown('### Summary'), summary,
         pn.pane.Markdown('## Portfolio Returns'),
@@ -239,10 +285,18 @@ def interactive_report(*portfolios):
         pn.pane.Markdown('### Rolling Excess Return'), window_w, roll_ret_plot,
         pn.pane.Markdown('### Real Wealth (Total Real Cum. Compounded Return)'), real_w_plot,
         pn.pane.Markdown('## Drawdowns'), drawdown_plot,
-
         pn.pane.Markdown('## Real Return comparison'), lost_dec_comp,
         pn.pane.Markdown('## Decade Comparison'), decade_comp,
-        )
+    )
 
-    strat_comp = pn.bind(lambda ps: strategy_comparison_w(ps), ports_rx)
-    return pn.Tabs(('Portfolio Comparison', comparison_w), ('Portfolio Overview', portfolio_overview_w), ('Strategy Comparison', strat_comp))
+    overview_w = pn.Column(pn.Row(*ov_tw), pn.Row(*ov_hier), portfolio_overview(selected_p))
+
+    strat_comp = pn.bind(lambda ps: strategy_comparison_w(ps), sc_rx)
+    strat_w    = pn.Column(pn.Row(*sc_tw), strat_comp)
+
+    return pn.Tabs(
+        ('Portfolio Comparison', comparison_w),
+        ('Portfolio Overview', overview_w),
+        ('Strategy Comparison', strat_w),
+        dynamic=True
+    )
