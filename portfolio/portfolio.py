@@ -83,44 +83,37 @@ def stats(self:Portfolio):
 def cum_return(self:Portfolio):
     'Cumulative compounded total return'
     r = self._port_rets(excess=False)
-    # L = sum(self.weights.values())
-    # if L > 1 and self.rf is not None:
-    #     funding_rate = self.rf + self.funding_spread/12
-    #     r = r.sub(funding_rate*(L-1))
-    #     # this resets the name of the series so we set it back
-    #     r.name = self.name
     return (1+r).cumprod()
+
+# %% ../nbs/portfolio.ipynb #a69502ff
+@patch
+def real_r(self: Portfolio, components=False):
+    if self.cpi is None:
+        raise ValueError("You must specify CPI data to compute real returns")
+    r = self._port_rets(excess=False)
+    if components: r = self.raw_rets.join(r)
+    real_r = (1+r).div(1+self.cpi, axis=0)-1
+    return real_r.dropna()
 
 # %% ../nbs/portfolio.ipynb #753ea704
 @patch
 def real_w(self:Portfolio):
     'Total real wealth'
-    if self.cpi is None:
-        raise ValueError("You must specify CPI data to compute real returns")
-    cum_return = self.cum_return()
-    inflation = self.cpi
-    ix = inflation.index.intersection(cum_return.index)
-    real_w = cum_return[ix] / (inflation[ix]+1).cumprod()
+    r = self.real_r()
+    real_w = (1+r).cumprod()
     real_w.name = self.name
     return real_w
 
 # %% ../nbs/portfolio.ipynb #64846c02
 @patch
-def roll_return(self:Portfolio, months=12, excess=True, extras=False):
+def roll_return(self:Portfolio, months=12, excess=True, extras=False, forward=False):
     'Rolling (excess) return (linearly summed) expressed in annualised terms.'
     years = months/12
     r = self._port_rets(excess=excess)
     if extras: r = r.to_frame().join(self.rf).join(self.cpi).dropna()
+    if forward: r = r[::-1]
     r = r.rolling(months).sum().dropna()
-    return r/years
-
-# %% ../nbs/portfolio.ipynb #be68333f
-@patch
-def versus_cpi(self:Portfolio, months=12):
-    'Rolling real return (linearly summed). Shows you how much real purchasing power you would have lost/gained at any point in time'
-    years = months/12
-    r = (self._port_rets(excess=False) - self.cpi).dropna()
-    r = r.rolling(months).sum().dropna()
+    if forward: r = r[::-1]
     return r/years
 
 # %% ../nbs/portfolio.ipynb #9c86797b
@@ -189,6 +182,27 @@ def drawdown_series(self:Portfolio, assets=False):
 def max_drawdown(self:Portfolio):
     "Worst peak-to-trough decline over full history"
     return self.drawdown_series().min().item()
+
+# %% ../nbs/portfolio.ipynb #8364b8de
+@patch
+def lost_decade(self: Portfolio, components=False, months=120):
+    "Real forward 10y returns (ann)"
+    real_r = self.real_r(components=components)
+    annual = (1 + real_r)[::-1].rolling(months).agg(np.prod)[::-1] ** (1/10) - 1
+    return annual.dropna()
+
+# %% ../nbs/portfolio.ipynb #40aa7aaa
+@patch
+def r_by_decade(self: Portfolio):
+    "Real return series per decade"
+    decade_starts = [y for y in range(1900, 2030, 10)]
+    blocks = [self.real_r().loc[f'{y}-01-01':f'{y+9}-12-31'] for y in decade_starts]
+    blocks = [b for b in blocks if len(b) == 120]
+    df = [pd.concat([pd.Series([1]), 1+b]).cumprod().reset_index(drop=True) for b in blocks]
+    df = pd.concat(df, axis=1)
+    df.columns = [f'{b.index[0].year}s' for b in blocks]
+    df.index = df.index/12 # normalize months to years
+    return df
 
 # %% ../nbs/portfolio.ipynb #c3d1b055
 @patch
