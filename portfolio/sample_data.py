@@ -10,6 +10,9 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 
+# %% ../nbs/sample_data.ipynb #ea256e01
+from .util import data_path
+
 # %% ../nbs/sample_data.ipynb #aad89bb2
 def sample_data():
     idx = pd.date_range('1992-06-01', periods=120, freq='MS')
@@ -23,14 +26,9 @@ def sample_data():
     cpi.index.name = 'date'
     return rets, rf, cpi
 
-# %% ../nbs/sample_data.ipynb #72373282
-def _data_path():
-    import portfolio
-    return Path(portfolio.__file__).parent.parent/'data'
-
 # %% ../nbs/sample_data.ipynb #de79a0dd
 def sample_data_se():
-    p = _data_path()
+    p = data_path()
     rets = pd.read_csv(p/'sample_portfolio_returns.csv', index_col=0, parse_dates=True)
     rets = rets.rename(columns={'se_equities': 'stocks', 'se_bonds': 'bonds'})
     rf = pd.read_csv(p/'sample_portfolio_rf.csv', index_col=0, parse_dates=True)
