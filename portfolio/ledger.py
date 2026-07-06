@@ -78,7 +78,7 @@ def _parse_txns(path):
 # %% ../nbs/ledger.ipynb #e8c090a4
 def _load_prices(eod_dir, assets):
     "Load and forward-fill EOD price CSVs for `assets`"
-    dfs = [pd.read_csv(Path(eod_dir)/f'{a}.csv', index_col=0, parse_dates=True).rename(columns=lambda _: a) for a in assets]
+    dfs = [pd.read_csv(Path(eod_dir)/f'{a}.csv', index_col=0, parse_dates=True)[['adjusted_close']].rename(columns=lambda _: a) for a in assets]
     return pd.concat(dfs, axis=1, sort=True)
 
 # %% ../nbs/ledger.ipynb #530bd11c
