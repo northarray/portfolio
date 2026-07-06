@@ -18,7 +18,7 @@ from fastcore.all import patch
 # %% ../nbs/ledger.ipynb #6f935014
 class Ledger:
     "Live portfolio ledger: raw transactions + prices in a common currency"
-    def __init__(self, txns, prices):
+    def __init__(self, txns, prices, eod_dir=None):
         store_attr()
         wide = txns.pivot_table(index='date', columns='symbol', values=['units', 'tot_invested'], aggfunc='sum')
         self.units_held  = wide['units'].cumsum().reindex(prices.index).ffill()
@@ -81,17 +81,25 @@ def _load_prices(eod_dir, assets):
     dfs = [pd.read_csv(Path(eod_dir)/f'{a}.csv', index_col=0, parse_dates=True)[['adjusted_close']].rename(columns=lambda _: a) for a in assets]
     return pd.concat(dfs, axis=1, sort=True)
 
+# %% ../nbs/ledger.ipynb #0e793f53
+def _get_currency(assets, eod_dir):
+    return {k: v for a in assets for k, v in pd.read_csv(Path(eod_dir)/f'{a}.csv').set_index('ISIN')['Currency'].to_dict().items()}
+
 # %% ../nbs/ledger.ipynb #530bd11c
-def _to_sek(txns, prices, fx='EURSEK'):
+def _to_sek(txns, prices, fx:pd.Series, eod_dir):
     "Convert EUR-denominated transactions and prices to SEK"
-    def eursek(date): return prices.loc[:date, fx].iloc[-1]
-    eur = txns['Valuta'] == 'EUR'
     txns = txns.copy()
-    eur_assets = txns.loc[eur, 'ISIN'].unique().tolist()
-    txns.loc[eur, 'Kurs'] = txns[eur].apply(lambda r: r.Kurs * eursek(r.Affärsdag), axis=1)
-    txns.loc[eur, 'Valuta'] = 'SEK'
     prices = prices.copy()
-    prices[eur_assets] = prices[eur_assets].multiply(prices[fx], axis=0)
+
+    # convert txns
+    mask = (txns['Valuta'] == 'EUR').values
+    txns.loc[mask, 'Kurs'] *= fx.reindex(txns['Affärsdag'], method='ffill')[mask].values
+    txns.loc[mask, 'Valuta'] = 'SEK'
+
+    # convert market prices
+    eur_traded = [k for k,v in _get_currency(prices.columns, eod_dir).items() if v=='EUR']
+    prices.loc[:, eur_traded] = prices.loc[:, eur_traded].multiply(fx.reindex(prices.index, method='ffill'), axis=0)
+
     return txns, prices
 
 # %% ../nbs/ledger.ipynb #7d56869f
@@ -106,11 +114,19 @@ def _clean_txns(txns):
 @patch(cls_method=True)
 def from_csv(cls:Ledger, txns_path, eod_dir, drop=None, fx='EURSEK'):
     "Build a Ledger from a brokerage transactions CSV and EOD price directory"
-    raw = _parse_txns(txns_path)
-    assets = list(raw.ISIN.unique()) + [fx]
-    prices = _load_prices(eod_dir, assets)
-    raw, prices = _to_sek(raw, prices, fx)
-    drop = (drop or []) + [fx]
+    txns = _parse_txns(txns_path)
+    prices = _load_prices(eod_dir, list(txns.ISIN.unique()))
+    fx_df = _load_prices(eod_dir, [fx])
+
+    txns, prices = _to_sek(txns, prices, fx_df[fx], eod_dir)
+    drop = (drop or [])
     prices = prices.drop(columns=drop).ffill()
-    txns = _clean_txns(raw[~raw.ISIN.isin(drop)])
-    return cls(txns, prices)
+    txns = _clean_txns(txns[~txns.ISIN.isin(drop)])
+    return cls(txns, prices, eod_dir)
+
+# %% ../nbs/ledger.ipynb #5e983f4b
+@patch
+def get_names(self:Ledger):
+    if self.eod_dir:
+        assets = self.prices.columns
+        return {k: v for a in assets for k, v in pd.read_csv(Path(self.eod_dir)/f'{a}.csv').set_index('ISIN')['Name'].to_dict().items()}
