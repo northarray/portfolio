@@ -1,0 +1,7 @@
+website:
+  sidebar:
+    contents:
+      - index.ipynb
+      - core.ipynb
+      - sample_data.ipynb
+      - util.ipynb

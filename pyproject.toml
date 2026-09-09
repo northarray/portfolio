@@ -16,15 +16,15 @@ classifiers = [
     "Programming Language :: Python :: 3 :: Only",
 ]
 dependencies = [
-    "bokeh",
-    "fastcore",
-    "holoviews",
-    "hvplot",
-    "matplotlib",
     "numpy",
     "pandas",
-    "panel",
-    "scipy",
+    "matplotlib",
+    "fastcore",
+]
+
+[dependency-groups]
+dev = [
+    "nbdev",
 ]
 
 [project.urls]

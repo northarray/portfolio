@@ -7,3 +7,8 @@ website:
   description: ""
   repo-branch: main
   repo-url: "https://github.com/northarray/portfolio"
+
+format-links:
+  - html
+  - format: commonmark
+    text: Markdown
