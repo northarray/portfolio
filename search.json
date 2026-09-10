@@ -1,0 +1,142 @@
+[
+  {
+    "objectID": "core.html",
+    "href": "core.html",
+    "title": "core",
+    "section": "",
+    "text": "To create a portfolio you simply pass the return streams and weights to the portfolio class. It expects monthly return streams. The best way is to gather all your raw, monthly return streams in a single dataframe, including the risk-free (cash-rate) asset. That way you can check for gaps in the data and validate that the data lines up properly before passing it to the portfolio.\nThe risk free rate will be used to transform the return streams to excess return streams (in excess of risk free).\n\n\nsource\n\n\ndef Portfolio(\n    name:str, return_streams:pandas.DataFrame, weights:dict, rf:pandas.DataFrame=None, cpi:pandas.DataFrame=None,\n    funding_spread:float=0.0, start:NoneType=None, end:NoneType=None\n):\n\n\nLet’s generate sample data for use in analysis\n\nrets, rf, cpi = sample_data_se()\n\n\nrets.head(2)\n\n\n\n\n\n\n\n\nstocks\nbonds\n\n\n\n\n1953-10\n-0.006897\n0.005687\n\n\n1953-11\n0.018286\n0.003030\n\n\n\n\n\n\n\n\nrf.head(2)\n\ndate\n1856-11    0.004167\n1856-12    0.004167\nFreq: M, Name: rf, dtype: float64\n\n\n\ncpi.head(2)\n\ndate\n1955-02    0.001703\n1955-03    0.001932\nFreq: M, Name: cpi, dtype: float64\n\n\nWe make a simple 60/40 portfolio\n\np = Portfolio('60/40', rets, {'bonds': .40, 'stocks': .60}, rf=rf, cpi=cpi)\np\n\n{'bonds': 0.4, 'stocks': 0.6}\n\n\n\np.name\n\n'60/40'\n\n\nSometimes we want to inspect the start and end dates of the raw data that a portfolio uses and whether there are missing data points.\n\n\nsource\n\n\ndef availability():\nInformation on the underlying data powering the analysis\n\n\n\np.availability\n\n\n\n\n\n\n\n\nstart\nend\nobservations\nmissing_months\n\n\n\n\nreturns\n1953-10\n2025-01\n856\n0\n\n\nrf\n1856-11\n2026-04\n2034\n0\n\n\ncpi\n1955-02\n2024-03\n830\n0\n\n\n\n\n\n\n\nIt is also convenient to be able to examine performance in different time periods.\n\n\nsource\n\n\ndef between(\n    start:NoneType=None, end:NoneType=None\n):\nChanges performance time period from start to end\n\n\n\np.return_streams.index.min(), p.return_streams.index.max()\n\n(Period('1953-10', 'M'), Period('2025-01', 'M'))\n\n\nIf we want to limit our analysis to between 2010 and 2020 we do like this\n\np = p.between('1/1995', '1/2000')\n\n\np.return_streams.index.min(), p.return_streams.index.max()\n\n(Period('1995-01', 'M'), Period('2000-01', 'M'))\n\n\nIt is possible to re-slice again to a larger window\n\np = p.between('1/1900', '1/2024')\n\n\np.return_streams.index.min(), p.return_streams.index.max()\n\n(Period('1953-10', 'M'), Period('2024-01', 'M'))\n\n\nThe portfolio return is the excess return your portfolio makes each month\n\n\nsource\n\n\ndef port_rets(\n    excess:bool=True, agg:bool=True\n):\nMonthly portfolio return\n\n\n\np.port_rets().head(2)\n\n1953-10   -0.004364\n1953-11    0.009892\nFreq: M, Name: 60/40, dtype: float64\n\n\nIf we do not supply a rf, the excess return does not work\n\ntest_fail(\n    lambda: Portfolio('60/40', rets, {'bonds': .40, 'stocks': .60}).port_rets(),\n    contains=\"no risk-free rate\"\n)",
+    "crumbs": [
+      "core"
+    ]
+  },
+  {
+    "objectID": "core.html#a-portfolio",
+    "href": "core.html#a-portfolio",
+    "title": "core",
+    "section": "",
+    "text": "To create a portfolio you simply pass the return streams and weights to the portfolio class. It expects monthly return streams. The best way is to gather all your raw, monthly return streams in a single dataframe, including the risk-free (cash-rate) asset. That way you can check for gaps in the data and validate that the data lines up properly before passing it to the portfolio.\nThe risk free rate will be used to transform the return streams to excess return streams (in excess of risk free).\n\n\nsource\n\n\ndef Portfolio(\n    name:str, return_streams:pandas.DataFrame, weights:dict, rf:pandas.DataFrame=None, cpi:pandas.DataFrame=None,\n    funding_spread:float=0.0, start:NoneType=None, end:NoneType=None\n):\n\n\nLet’s generate sample data for use in analysis\n\nrets, rf, cpi = sample_data_se()\n\n\nrets.head(2)\n\n\n\n\n\n\n\n\nstocks\nbonds\n\n\n\n\n1953-10\n-0.006897\n0.005687\n\n\n1953-11\n0.018286\n0.003030\n\n\n\n\n\n\n\n\nrf.head(2)\n\ndate\n1856-11    0.004167\n1856-12    0.004167\nFreq: M, Name: rf, dtype: float64\n\n\n\ncpi.head(2)\n\ndate\n1955-02    0.001703\n1955-03    0.001932\nFreq: M, Name: cpi, dtype: float64\n\n\nWe make a simple 60/40 portfolio\n\np = Portfolio('60/40', rets, {'bonds': .40, 'stocks': .60}, rf=rf, cpi=cpi)\np\n\n{'bonds': 0.4, 'stocks': 0.6}\n\n\n\np.name\n\n'60/40'\n\n\nSometimes we want to inspect the start and end dates of the raw data that a portfolio uses and whether there are missing data points.\n\n\nsource\n\n\ndef availability():\nInformation on the underlying data powering the analysis\n\n\n\np.availability\n\n\n\n\n\n\n\n\nstart\nend\nobservations\nmissing_months\n\n\n\n\nreturns\n1953-10\n2025-01\n856\n0\n\n\nrf\n1856-11\n2026-04\n2034\n0\n\n\ncpi\n1955-02\n2024-03\n830\n0\n\n\n\n\n\n\n\nIt is also convenient to be able to examine performance in different time periods.\n\n\nsource\n\n\ndef between(\n    start:NoneType=None, end:NoneType=None\n):\nChanges performance time period from start to end\n\n\n\np.return_streams.index.min(), p.return_streams.index.max()\n\n(Period('1953-10', 'M'), Period('2025-01', 'M'))\n\n\nIf we want to limit our analysis to between 2010 and 2020 we do like this\n\np = p.between('1/1995', '1/2000')\n\n\np.return_streams.index.min(), p.return_streams.index.max()\n\n(Period('1995-01', 'M'), Period('2000-01', 'M'))\n\n\nIt is possible to re-slice again to a larger window\n\np = p.between('1/1900', '1/2024')\n\n\np.return_streams.index.min(), p.return_streams.index.max()\n\n(Period('1953-10', 'M'), Period('2024-01', 'M'))\n\n\nThe portfolio return is the excess return your portfolio makes each month\n\n\nsource\n\n\ndef port_rets(\n    excess:bool=True, agg:bool=True\n):\nMonthly portfolio return\n\n\n\np.port_rets().head(2)\n\n1953-10   -0.004364\n1953-11    0.009892\nFreq: M, Name: 60/40, dtype: float64\n\n\nIf we do not supply a rf, the excess return does not work\n\ntest_fail(\n    lambda: Portfolio('60/40', rets, {'bonds': .40, 'stocks': .60}).port_rets(),\n    contains=\"no risk-free rate\"\n)",
+    "crumbs": [
+      "core"
+    ]
+  },
+  {
+    "objectID": "core.html#portfolio-metrics-and-stats",
+    "href": "core.html#portfolio-metrics-and-stats",
+    "title": "core",
+    "section": "Portfolio Metrics and Stats",
+    "text": "Portfolio Metrics and Stats\n\n\nsource\n\nPortfolio.stats\ndef stats():\nExcess return, volatility and sharpe ratio (annualised)\n\n\n\ns = p.stats()\ns\n\nexpected_return    0.054973\nvolatility         0.113354\nsharpe_ratio       0.484965\nName: 60/40, dtype: float64\n\n\n\n\nsource\n\nPortfolio.cum_return\ndef cum_return():\nCumulative compounded total return\n\n\n\np.cum_return().head(2)\n\n1953-10    0.998136\n1953-11    1.010297\nFreq: M, Name: 60/40, dtype: float64\n\n\n\n\nsource\n\nPortfolio.real_r\ndef real_r(\n    components:bool=False\n):\nReal (inflation-adjusted) return\n\n\nWe only get inflation adjusted returns based on when our inflation data exists.\n\np.availability\n\n\n\n\n\n\n\n\nstart\nend\nobservations\nmissing_months\n\n\n\n\nreturns\n1953-10\n2025-01\n856\n0\n\n\nrf\n1856-11\n2026-04\n2034\n0\n\n\ncpi\n1955-02\n2024-03\n830\n0\n\n\n\n\n\n\n\n\np.real_r().head(2)\n\n1955-02    0.001710\n1955-03    0.008901\nFreq: M, dtype: float64\n\n\nSince cpi data starts in 1955 we should expect real returns to only show up in 1955 even though we have returns data since 1953\n\n\nsource\n\nPortfolio.real_w\ndef real_w():\nReal total wealth, your total compounded wealth less inflation\n\n\n\np.real_w().head(2)\n\n1955-02    1.001710\n1955-03    1.010626\nFreq: M, Name: 60/40, dtype: float64\n\n\n\n\nsource\n\nPortfolio.roll_return\ndef roll_return(\n    months:int=12, excess:bool=True, extras:bool=False, forward:bool=False\n):\nRolling return (linearly summed) expressed in annualised terms.\n\n\n\np.roll_return(24).plot()\n\n\n\n\n\n\n\n\nWe can also ask for cpi and rf to get a better feel of returns and conditions\n\np.roll_return(24, excess=False, extras=True).plot()\n\n\n\n\n\n\n\n\n\n\nsource\n\nPortfolio.cum_excess_return\ndef cum_excess_return():\nCumulative sum of monthly returns (no compounding)\n\n\n\np.cum_excess_return().plot()\n\n\n\n\n\n\n\n\nShows how portfolio performs each month, upwards sloping means we are doing better than risk-free, downward sloping means we are doing worse. Flat means we are same. Does not use compounding.\n\n\nsource\n\nPortfolio.detrended_cum_return\ndef detrended_cum_return():\nCumulative sum of returns minus long-run mean\n\n\n\np.detrended_cum_return().plot()\n\n\n\n\n\n\n\n\nThis makes it easier to see environmental biases: periods where an asset did worse or better than its average.",
+    "crumbs": [
+      "core"
+    ]
+  },
+  {
+    "objectID": "core.html#comparing-portfolios",
+    "href": "core.html#comparing-portfolios",
+    "title": "core",
+    "section": "Comparing portfolios",
+    "text": "Comparing portfolios\n\n\nsource\n\ncompare\ndef compare(\n    *portfolios, metric:str='stats', **kwargs\n):\nCompares two portfolios using a metric\n\n\n\ncompare(p1,p2)\n\n\n\n\n\n\n\n\n60/40\nRisk Parity Short Dates\n\n\n\n\nexpected_return\n0.029352\n0.028452\n\n\nvolatility\n0.136762\n0.096813\n\n\nsharpe_ratio\n0.214620\n0.293889\n\n\n\n\n\n\n\nWe may choose any of the above defined metrics.\n\ncompare(p1,p2, metric='cum_return').plot()\n\n\n\n\n\n\n\n\nWe can also supply arguments to the metrics as keyword arguments.\n\ncompare(p1,p2, metric='roll_return', months=24).plot()",
+    "crumbs": [
+      "core"
+    ]
+  },
+  {
+    "objectID": "core.html#portfolio-inspection",
+    "href": "core.html#portfolio-inspection",
+    "title": "core",
+    "section": "Portfolio inspection",
+    "text": "Portfolio inspection\nStatistics on return, risk and correlation of the assets that make up a portfolio.\n\n\nsource\n\nPortfolio.asset_stats\ndef asset_stats():\nExpected excess return, volatility and sharpe ratio\n\n\n\np.asset_stats()\n\n\n\n\n\n\n\n\nbonds\nstocks\n\n\n\n\nexpected_return\n0.003209\n0.051764\n\n\nvolatility\n0.021255\n0.108144\n\n\nsharpe_ratio\n0.150983\n0.478653\n\n\n\n\n\n\n\n\n\nsource\n\nPortfolio.risk_contribution\ndef risk_contribution():\nPer-asset risk contribution as percentage of portfolio variance\n\n\n\np.risk_contribution()\n\nbonds     0.062485\nstocks    0.937515\nName: 60/40, dtype: float64\n\n\nIf a large percentage comes from a single asset it means that this asset is dominating the volatiltiy and hence the risk-return profile of the portfolio. Each asset’s contribution is dependent on its allocation weight and how much each asset correlates with the total portfolio.\n\n\nsource\n\nPortfolio.correlation\ndef correlation():\nPairwise correlation matrix of underlying assets and portfolio\n\n\n\np.correlation()\n\n\n\n\n\n\n\n\nbonds\nstocks\n60/40\n\n\n\n\nbonds\n1.000000\n0.152744\n0.333235\n\n\nstocks\n0.152744\n1.000000\n0.982680\n\n\n60/40\n0.333235\n0.982680\n1.000000\n\n\n\n\n\n\n\n\n\nsource\n\nPortfolio.return_drivers\ndef return_drivers(\n    months:int=60\n):\nAsset and portfolio rolling return\n\n\n\np.return_drivers().plot()\n\n\n\n\n\n\n\n\nShows us a different picture of the risk contribution and what is driving returns. Here the equity asset is clearly driving portfolio returns.",
+    "crumbs": [
+      "core"
+    ]
+  },
+  {
+    "objectID": "core.html#drawdowns",
+    "href": "core.html#drawdowns",
+    "title": "core",
+    "section": "Drawdowns",
+    "text": "Drawdowns\n\n\nsource\n\nPortfolio.drawdown_series\ndef drawdown_series(\n    assets:bool=False\n):\nDrawdown series\n\n\n\np.drawdown_series().plot()\n\n\n\n\n\n\n\n\n\n\nsource\n\nPortfolio.max_drawdown\ndef max_drawdown():\nWorst peak-to-trough decline\n\n\n\np.max_drawdown()\n\n-0.4186032934171998",
+    "crumbs": [
+      "core"
+    ]
+  },
+  {
+    "objectID": "core.html#decade-by-decade-analysis",
+    "href": "core.html#decade-by-decade-analysis",
+    "title": "core",
+    "section": "Decade by decade analysis",
+    "text": "Decade by decade analysis\n\n\nsource\n\nPortfolio.r_by_decade\ndef r_by_decade():\nReal return grouped by decade\n\n\n\np.r_by_decade().plot(logy=True)",
+    "crumbs": [
+      "core"
+    ]
+  },
+  {
+    "objectID": "core.html#leverage",
+    "href": "core.html#leverage",
+    "title": "core",
+    "section": "Leverage",
+    "text": "Leverage\nCreating a leveraged portfolio is easy: specify weights that add up to more than 100%\n\np_l = Portfolio(\"Leveraged\", rets, weights={'stocks': 0.65, 'bonds': 0.65}, rf=rf)\np_l\n\n{'stocks': 0.65, 'bonds': 0.65}\n\n\n\np_u = Portfolio(\"Unlevered\", rets, weights={'stocks': 0.50, 'bonds': 0.50}, rf=rf)\np_u\n\n{'stocks': 0.5, 'bonds': 0.5}\n\n\nLeveraging a portfolio increases the volatility and return linearly.\n\ncompare(p_l, p_u)\n\n\n\n\n\n\n\n\nLeveraged\nUnlevered\n\n\n\n\nexpected_return\n0.061573\n0.047364\n\n\nvolatility\n0.126549\n0.097345\n\n\nsharpe_ratio\n0.486555\n0.486555\n\n\n\n\n\n\n\nAs a result we also get larger swings and drawdowns\n\ncompare(p_u, p_l, metric='drawdown_series').plot()\n\n\n\n\n\n\n\n\n\ncompare(p_u, p_l, metric='cum_return').plot(logy=True)",
+    "crumbs": [
+      "core"
+    ]
+  },
+  {
+    "objectID": "core.html#risk",
+    "href": "core.html#risk",
+    "title": "core",
+    "section": "Risk",
+    "text": "Risk\n\n\nsource\n\nPortfolio.rolling_vol\ndef rolling_vol(\n    months:int=24\n):\nAnnualised rolling volatility per asset\n\n\n\np.rolling_vol().plot()\n\n\n\n\n\n\n\n\nWe can normalize these volatilities to get a simple measure of risk contribution. This ignores covariance and treats each asset as independent.\n\n\nsource\n\nPortfolio.rc_simple\ndef rc_simple():\nSimple risk contribution metric\n\n\n\nrc = p.rc_simple()\n\n\nrc.plot()",
+    "crumbs": [
+      "core"
+    ]
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "portfolio",
+    "section": "",
+    "text": "Tool for simulating, comparing and visualising the performance of investment portfolios.",
+    "crumbs": [
+      "portfolio"
+    ]
+  },
+  {
+    "objectID": "index.html#usage",
+    "href": "index.html#usage",
+    "title": "portfolio",
+    "section": "Usage",
+    "text": "Usage\n\nInstallation\nInstall latest from the GitHub repository:\n$ pip install git+https://github.com/northarray/portfolio.git\n\n\nDocumentation\nDocumentation can be found hosted on this GitHub repository’s pages.",
+    "crumbs": [
+      "portfolio"
+    ]
+  },
+  {
+    "objectID": "index.html#how-to-use",
+    "href": "index.html#how-to-use",
+    "title": "portfolio",
+    "section": "How to use",
+    "text": "How to use\nCheck out core module for full usage. The main idea is that a portfolio consists of monthly return streams together with a weighing scheme. Here is a quick intro:\n\nrets, rf, cpi = sample_data_se()\n\n\np = Portfolio('60/40', rets, {'bonds': .40, 'stocks': .60}, rf=rf, cpi=cpi)\np\n\n{'bonds': 0.4, 'stocks': 0.6}\n\n\n\np.stats()\n\nexpected_return    0.055278\nvolatility         0.112835\nsharpe_ratio       0.489897\nName: 60/40, dtype: float64\n\n\n\np.real_w().head()\n\n1955-02    1.001710\n1955-03    1.010626\n1955-04    0.983135\n1955-05    0.959486\n1955-06    0.945793\nFreq: M, Name: 60/40, dtype: float64\n\n\n\np.real_w().plot(logy=True)",
+    "crumbs": [
+      "portfolio"
+    ]
+  },
+  {
+    "objectID": "util.html",
+    "href": "util.html",
+    "title": "util",
+    "section": "",
+    "text": "source\n\ndata_path\ndef data_path():",
+    "crumbs": [
+      "util"
+    ]
+  },
+  {
+    "objectID": "sample_data.html",
+    "href": "sample_data.html",
+    "title": "sample_data",
+    "section": "",
+    "text": "source\n\nsample_data\ndef sample_data():\n\n\n\n\nsource\n\nsample_data_se\ndef sample_data_se():",
+    "crumbs": [
+      "sample_data"
+    ]
+  }
+]
